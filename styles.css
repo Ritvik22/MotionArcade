@@ -122,6 +122,10 @@ button {
   color: #fff;
 }
 
+.leaderboard-card button {
+  background: linear-gradient(135deg, #355d8b, #2c4f76);
+}
+
 #cameraState {
   margin: 0;
   color: var(--muted);
@@ -253,6 +257,39 @@ button {
   accent-color: #1f5b94;
 }
 
+.leaderboard-controls {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.45rem;
+  align-items: center;
+  margin-top: 0.35rem;
+}
+
+#playerNameInput {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 0.52rem 0.62rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.85rem;
+  color: var(--ink);
+}
+
+.leaderboard-list {
+  margin: 0.45rem 0 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.84rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.leaderboard-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
 .hidden {
   display: none;
 }
@@ -305,6 +342,10 @@ button {
 
 .mobile-mode .control-group label {
   font-size: 0.78rem;
+}
+
+.mobile-mode .leaderboard-controls {
+  grid-template-columns: 1fr;
 }
 
 @media (max-width: 980px) {

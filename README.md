@@ -30,3 +30,23 @@ To see visitors/page views:
 1. Import this repo into Vercel and deploy.
 2. Enable **Analytics** in your Vercel project.
 3. Visit the deployed site and check the Analytics tab after traffic comes in.
+
+## Global Leaderboards (Database)
+
+This app now includes a global leaderboard API at `api/leaderboard.js`.
+
+It uses Vercel KV (Upstash Redis via REST) and expects these environment variables:
+
+- `KV_REST_API_URL`
+- `KV_REST_API_TOKEN`
+
+Setup steps:
+
+1. In Vercel, open your project and add a **KV** store.
+2. Connect the KV store to this project so Vercel injects the env vars above.
+3. Redeploy the project.
+
+After that, score submissions and leaderboard reads are live globally for:
+
+- `flappy`
+- `cricket`

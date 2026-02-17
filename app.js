@@ -28,12 +28,18 @@ const jumpSlider = document.getElementById("jumpSlider");
 const gravityValue = document.getElementById("gravityValue");
 const jumpValue = document.getElementById("jumpValue");
 const deviceModeNotice = document.getElementById("deviceModeNotice");
+const playerNameInput = document.getElementById("playerNameInput");
+const saveNameBtn = document.getElementById("saveNameBtn");
+const leaderboardMeta = document.getElementById("leaderboardMeta");
+const leaderboardList = document.getElementById("leaderboardList");
 
 let camera;
 let cameraStarted = false;
 let activeGame = "flappy";
 let lastPoseSampleAt = null;
 let isMobileDevice = detectMobileDevice();
+let playerName = (localStorage.getItem("motionArcadePlayerName") || "").trim();
+let leaderboardRefreshTimer;
 
 const poseState = {
   previousLeftY: null,
@@ -52,7 +58,7 @@ const CRICKET_MAX_BALLS = 12;
 const difficultyProfiles = {
   desktop: {
     gravity: 1350,
-    jump: 575,
+    jump: 450,
     pipeWidth: 72,
     pipeGap: 214,
     pipeSpeed: 145,
@@ -69,7 +75,7 @@ const difficultyProfiles = {
   },
   mobile: {
     gravity: 1100,
-    jump: 650,
+    jump: 450,
     pipeWidth: 66,
     pipeGap: 240,
     pipeSpeed: 118,
@@ -110,6 +116,7 @@ const flappyState = {
   best: 0,
   pipes: [],
   pipeSpawnTimer: 0,
+  submittedAtGameOver: false,
 };
 
 const cricketState = {
@@ -123,6 +130,7 @@ const cricketState = {
   flashRuns: 0,
   batAngle: -0.35,
   batAngularVelocity: 0,
+  submittedAtInningsEnd: false,
 };
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -174,6 +182,74 @@ function setFlapStatus(text, className) {
   flapStatus.className = `status ${className}`;
 }
 
+function sanitizePlayerName(raw) {
+  return String(raw || "")
+    .replace(/[^\w\- ]/g, "")
+    .trim()
+    .slice(0, 18);
+}
+
+function renderLeaderboard(entries, game) {
+  leaderboardMeta.textContent =
+    game === "flappy" ? "Top 10 scores for Flappy Bird" : "Top 10 scores for Cricket";
+  leaderboardList.innerHTML = "";
+
+  if (!entries.length) {
+    const li = document.createElement("li");
+    li.textContent = "No scores yet. Be the first!";
+    leaderboardList.appendChild(li);
+    return;
+  }
+
+  entries.forEach((entry, index) => {
+    const li = document.createElement("li");
+    li.className = "leaderboard-row";
+    li.innerHTML = `<span>${index + 1}. ${entry.name}</span><strong>${entry.score}</strong>`;
+    leaderboardList.appendChild(li);
+  });
+}
+
+async function loadLeaderboard(game = activeGame) {
+  try {
+    const response = await fetch(`/api/leaderboard?game=${encodeURIComponent(game)}&limit=10`, {
+      cache: "no-store",
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      leaderboardList.innerHTML = `<li>${payload.error || "Leaderboard unavailable."}</li>`;
+      return;
+    }
+    renderLeaderboard(payload.entries || [], game);
+  } catch (error) {
+    leaderboardList.innerHTML = "<li>Could not load leaderboard.</li>";
+    console.error(error);
+  }
+}
+
+async function submitScore(game, score) {
+  const safeName = sanitizePlayerName(playerNameInput.value || playerName);
+  if (!safeName || !Number.isFinite(score) || score <= 0) return;
+  playerName = safeName;
+  playerNameInput.value = safeName;
+  localStorage.setItem("motionArcadePlayerName", safeName);
+
+  try {
+    const response = await fetch("/api/leaderboard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ game, name: safeName, score: Math.floor(score) }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      console.error(payload.error || "Could not submit score.");
+      return;
+    }
+    await loadLeaderboard(game);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 function resetFlappyGame() {
   flappyState.mode = "waiting";
   flappyState.birdY = gameCanvas.height * 0.45;
@@ -181,6 +257,7 @@ function resetFlappyGame() {
   flappyState.score = 0;
   flappyState.pipes = [];
   flappyState.pipeSpawnTimer = 0;
+  flappyState.submittedAtGameOver = false;
   gameScoreText.textContent = "Score: 0";
   bestScoreText.textContent = `Best: ${flappyState.best}`;
 }
@@ -196,6 +273,7 @@ function resetCricketGame() {
   cricketState.flashRuns = 0;
   cricketState.batAngle = -0.35;
   cricketState.batAngularVelocity = 0;
+  cricketState.submittedAtInningsEnd = false;
   cricketRunsText.textContent = "Runs: 0";
   cricketBallsText.textContent = `Balls: 0/${CRICKET_MAX_BALLS}`;
   cricketLastShotText.textContent = "Last hit: -";
@@ -281,6 +359,10 @@ function registerCricketBallOutcome(lastHitText) {
     cricketState.ball = null;
     setFlapStatus("Innings over", "good");
     flapHint.textContent = "12 balls done. Fold arms or press Reset to play again.";
+    if (!cricketState.submittedAtInningsEnd && cricketState.runs > 0) {
+      cricketState.submittedAtInningsEnd = true;
+      submitScore("cricket", cricketState.runs);
+    }
   }
 }
 
@@ -344,27 +426,29 @@ function handlePoseGestures(landmarks, nowMs) {
   }
 
   if (activeGame === "flappy") {
-    const leftUpSpeed = (poseState.previousLeftY - leftWrist.y) / dt;
-    const rightUpSpeed = (poseState.previousRightY - rightWrist.y) / dt;
-    const meanUpSpeed = (leftUpSpeed + rightUpSpeed) / 2;
-    const elbowsBelowWrists = leftWrist.y < leftElbow.y + 0.11 && rightWrist.y < rightElbow.y + 0.11;
+    const leftDownSpeed = (leftWrist.y - poseState.previousLeftY) / dt;
+    const rightDownSpeed = (rightWrist.y - poseState.previousRightY) / dt;
+    const meanDownSpeed = (leftDownSpeed + rightDownSpeed) / 2;
+    const wristsMovingBelowElbows = leftWrist.y > leftElbow.y - 0.03 && rightWrist.y > rightElbow.y - 0.03;
     const cooldownReady = nowMs - poseState.lastFlapAt > flapCooldownMs;
-    const bothHandsUp = leftUpSpeed > flapThreshold * 0.75 && rightUpSpeed > flapThreshold * 0.75;
-    const oneHandPowerFlap = leftUpSpeed > flapThreshold * 1.25 || rightUpSpeed > flapThreshold * 1.25;
+    const bothHandsDown = leftDownSpeed > flapThreshold * 0.75 && rightDownSpeed > flapThreshold * 0.75;
+    const oneHandPowerFlap = leftDownSpeed > flapThreshold * 1.25 || rightDownSpeed > flapThreshold * 1.25;
     const isFlap =
-      cooldownReady && elbowsBelowWrists && (meanUpSpeed > flapThreshold || bothHandsUp || oneHandPowerFlap);
+      cooldownReady &&
+      wristsMovingBelowElbows &&
+      (meanDownSpeed > flapThreshold || bothHandsDown || oneHandPowerFlap);
 
     if (isFlap) {
       poseState.lastFlapAt = nowMs;
       triggerFlappyJump();
       setFlapStatus("Flap detected!", "good");
-      flapHint.textContent = "Nice. Keep flapping upward. Fold arms to reset.";
-    } else if (meanUpSpeed > flapThreshold * 0.6) {
+      flapHint.textContent = "Nice. Flap your arms down to keep climbing.";
+    } else if (meanDownSpeed > flapThreshold * 0.6) {
       setFlapStatus("Almost there", "neutral");
-      flapHint.textContent = "Good start. Raise both hands up a little faster.";
+      flapHint.textContent = "Good start. Drive both arms down a little faster.";
     } else {
       setFlapStatus("Ready", "neutral");
-      flapHint.textContent = "Quick upward flaps jump. Fold arms to reset.";
+      flapHint.textContent = "Quick downward flaps jump. Fold arms to reset.";
     }
   } else {
     const rightXSpeed = Math.abs((rightWrist.x - poseState.previousRightX) / dt);
@@ -447,7 +531,7 @@ function drawFlappy() {
   gameCtx.font = '700 16px "Space Grotesk", sans-serif';
   gameCtx.fillText("How To Play Flappy", 20, 34);
   gameCtx.font = '500 14px "IBM Plex Mono", monospace';
-  gameCtx.fillText("1) Flap both hands UP quickly to jump", 20, 56);
+  gameCtx.fillText("1) Flap both hands DOWN quickly to jump", 20, 56);
   gameCtx.fillText("2) Fold arms to reset", 20, 76);
 
   if (flappyState.mode === "waiting") {
@@ -607,6 +691,10 @@ function updateFlappy(dt) {
 
   if (flappyState.birdY < 16 || flappyState.birdY > gameCanvas.height - 16) {
     flappyState.mode = "gameover";
+    if (!flappyState.submittedAtGameOver && flappyState.score > 0) {
+      flappyState.submittedAtGameOver = true;
+      submitScore("flappy", flappyState.score);
+    }
     return;
   }
 
@@ -617,6 +705,10 @@ function updateFlappy(dt) {
     const inBottomPipe = flappyState.birdY + birdHitbox > pipe.gapY + pipe.gapHeight;
     if (inX && (inTopPipe || inBottomPipe)) {
       flappyState.mode = "gameover";
+      if (!flappyState.submittedAtGameOver && flappyState.score > 0) {
+        flappyState.submittedAtGameOver = true;
+        submitScore("flappy", flappyState.score);
+      }
       return;
     }
   }
@@ -677,14 +769,15 @@ function setActiveGame(nextGame) {
   if (flappy) {
     setFlapStatus("Ready", "neutral");
     flapHint.textContent = isMobileDevice
-      ? "Mobile Flappy: quick up-flaps jump. Fold arms to reset."
-      : "Flappy mode: flap hands to jump. Fold arms to reset.";
+      ? "Mobile Flappy: quick down-flaps jump. Fold arms to reset."
+      : "Flappy mode: flap arms down to jump. Fold arms to reset.";
   } else {
     setFlapStatus("Ready", "neutral");
     flapHint.textContent = isMobileDevice
       ? "Mobile Cricket: swing right hand, 12 balls, score 1/2/3/4/6."
       : "Cricket mode: 12 balls, score 1/2/3/4/6 by timing your swing.";
   }
+  loadLeaderboard(activeGame);
 }
 
 function onResults(results) {
@@ -789,8 +882,20 @@ resetGameBtn.addEventListener("click", () => {
   setFlapStatus("Ready", "neutral");
   flapHint.textContent =
     activeGame === "flappy"
-      ? "Flappy mode: flap hands to jump. Fold arms to reset."
+      ? "Flappy mode: flap arms down to jump. Fold arms to reset."
       : "Cricket mode: 12 balls, score 1/2/3/4/6 by timing your swing.";
+});
+
+saveNameBtn.addEventListener("click", () => {
+  const safeName = sanitizePlayerName(playerNameInput.value);
+  if (!safeName) {
+    setFlapStatus("Enter a player name", "neutral");
+    return;
+  }
+  playerName = safeName;
+  playerNameInput.value = safeName;
+  localStorage.setItem("motionArcadePlayerName", safeName);
+  setFlapStatus("Name saved", "good");
 });
 
 tabFlappy.addEventListener("click", () => setActiveGame("flappy"));
@@ -823,6 +928,11 @@ window.addEventListener("resize", () => {
 applyDeviceLayout();
 applyDifficultyProfile();
 bestScoreText.textContent = `Best: ${flappyState.best}`;
+if (playerName) playerNameInput.value = playerName;
 resetCricketGame();
 setActiveGame("flappy");
+if (leaderboardRefreshTimer) window.clearInterval(leaderboardRefreshTimer);
+leaderboardRefreshTimer = window.setInterval(() => {
+  loadLeaderboard(activeGame);
+}, 18000);
 gameLoop();

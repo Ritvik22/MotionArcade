@@ -73,10 +73,22 @@
               <input id="gravitySlider" type="range" min="900" max="3000" step="50" value="1700" />
             </div>
             <div class="control-group">
-              <label for="jumpSlider">Jump Strength: <span id="jumpValue">460</span></label>
-              <input id="jumpSlider" type="range" min="260" max="760" step="10" value="460" />
+              <label for="jumpSlider">Jump Strength: <span id="jumpValue">450</span></label>
+              <input id="jumpSlider" type="range" min="260" max="760" step="10" value="450" />
             </div>
           </div>
+        </div>
+
+        <div class="status-card leaderboard-card">
+          <h2>Global Leaderboard</h2>
+          <div class="leaderboard-controls">
+            <input id="playerNameInput" type="text" maxlength="18" placeholder="Enter player name" />
+            <button id="saveNameBtn" type="button">Save Name</button>
+          </div>
+          <p id="leaderboardMeta" class="micro-tag">Top 10 scores for Flappy Bird</p>
+          <ol id="leaderboardList" class="leaderboard-list">
+            <li>Loading leaderboard...</li>
+          </ol>
         </div>
       </aside>
     </main>
