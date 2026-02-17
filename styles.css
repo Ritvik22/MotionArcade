@@ -257,6 +257,56 @@ button {
   display: none;
 }
 
+.mobile-mode .layout {
+  grid-template-columns: 1fr;
+  gap: 0.7rem;
+  padding: 0.6rem;
+}
+
+.mobile-mode .metrics-panel {
+  order: 1;
+}
+
+.mobile-mode .camera-panel {
+  order: 2;
+}
+
+.mobile-mode .camera-wrap {
+  aspect-ratio: 3 / 4;
+  max-height: 52vh;
+}
+
+.mobile-mode .camera-start-btn {
+  font-size: 1.02rem;
+  padding: 0.95rem 1.3rem;
+}
+
+.mobile-mode .status-card {
+  padding: 0.75rem;
+}
+
+.mobile-mode .game-card {
+  gap: 0.45rem;
+}
+
+.mobile-mode .tab-btn {
+  font-size: 0.86rem;
+  padding: 0.65rem 0.72rem;
+}
+
+.mobile-mode #gameCanvas {
+  aspect-ratio: 10 / 14;
+  max-height: 68vh;
+}
+
+.mobile-mode .game-topbar {
+  gap: 0.45rem;
+}
+
+.mobile-mode .control-group label {
+  font-size: 0.78rem;
+}
+
 @media (max-width: 980px) {
   .layout {
     grid-template-columns: 1fr;

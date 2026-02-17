@@ -27,11 +27,13 @@ const gravitySlider = document.getElementById("gravitySlider");
 const jumpSlider = document.getElementById("jumpSlider");
 const gravityValue = document.getElementById("gravityValue");
 const jumpValue = document.getElementById("jumpValue");
+const deviceModeNotice = document.getElementById("deviceModeNotice");
 
 let camera;
 let cameraStarted = false;
 let activeGame = "flappy";
 let lastPoseSampleAt = null;
+let isMobileDevice = detectMobileDevice();
 
 const poseState = {
   previousLeftY: null,
@@ -43,19 +45,62 @@ const poseState = {
 };
 
 const BIRD_X = 90;
-const PIPE_WIDTH = 74;
-const PIPE_GAP = 170;
-const PIPE_SPEED = 180;
-const PIPE_SPAWN_INTERVAL = 1.35;
-
 const BATTER_X = 322;
 const BATTER_Y = 432;
-const BALL_SPAWN_INTERVAL = 1.6;
-const BALL_SPEED = 260;
 const CRICKET_MAX_BALLS = 12;
+
+const difficultyProfiles = {
+  desktop: {
+    gravity: 1350,
+    jump: 575,
+    pipeWidth: 72,
+    pipeGap: 214,
+    pipeSpeed: 145,
+    pipeSpawnInterval: 1.62,
+    flapThreshold: 0.74,
+    flapCooldownMs: 245,
+    ballSpeed: 205,
+    ballSpawnInterval: 1.85,
+    swingThreshold: 0.9,
+    swingCooldownMs: 320,
+    hitWindowX: 96,
+    hitWindowY: 120,
+    timingScale: 86,
+  },
+  mobile: {
+    gravity: 1100,
+    jump: 650,
+    pipeWidth: 66,
+    pipeGap: 240,
+    pipeSpeed: 118,
+    pipeSpawnInterval: 2.0,
+    flapThreshold: 0.58,
+    flapCooldownMs: 220,
+    ballSpeed: 165,
+    ballSpawnInterval: 2.1,
+    swingThreshold: 0.7,
+    swingCooldownMs: 280,
+    hitWindowX: 122,
+    hitWindowY: 145,
+    timingScale: 102,
+  },
+};
 
 let gravityStrength = Number(gravitySlider.value);
 let jumpStrength = Number(jumpSlider.value);
+let pipeWidth = difficultyProfiles.desktop.pipeWidth;
+let pipeGap = difficultyProfiles.desktop.pipeGap;
+let pipeSpeed = difficultyProfiles.desktop.pipeSpeed;
+let pipeSpawnInterval = difficultyProfiles.desktop.pipeSpawnInterval;
+let flapThreshold = difficultyProfiles.desktop.flapThreshold;
+let flapCooldownMs = difficultyProfiles.desktop.flapCooldownMs;
+let ballSpeed = difficultyProfiles.desktop.ballSpeed;
+let ballSpawnInterval = difficultyProfiles.desktop.ballSpawnInterval;
+let swingThreshold = difficultyProfiles.desktop.swingThreshold;
+let swingCooldownMs = difficultyProfiles.desktop.swingCooldownMs;
+let hitWindowX = difficultyProfiles.desktop.hitWindowX;
+let hitWindowY = difficultyProfiles.desktop.hitWindowY;
+let timingScale = difficultyProfiles.desktop.timingScale;
 
 const flappyState = {
   mode: "waiting",
@@ -81,6 +126,48 @@ const cricketState = {
 };
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+function detectMobileDevice() {
+  const byAgent = /Mobi|Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  const byScreen = window.matchMedia("(max-width: 900px)").matches;
+  const byPointer = window.matchMedia("(pointer: coarse)").matches;
+  return byAgent || byScreen || byPointer;
+}
+
+function applyDeviceLayout() {
+  document.body.classList.toggle("mobile-mode", isMobileDevice);
+  if (deviceModeNotice) {
+    deviceModeNotice.classList.remove("hidden");
+    deviceModeNotice.textContent = isMobileDevice
+      ? "Mobile-friendly mode enabled"
+      : "Desktop mode enabled";
+  }
+}
+
+function applyDifficultyProfile() {
+  const profile = isMobileDevice ? difficultyProfiles.mobile : difficultyProfiles.desktop;
+
+  pipeWidth = profile.pipeWidth;
+  pipeGap = profile.pipeGap;
+  pipeSpeed = profile.pipeSpeed;
+  pipeSpawnInterval = profile.pipeSpawnInterval;
+  flapThreshold = profile.flapThreshold;
+  flapCooldownMs = profile.flapCooldownMs;
+  ballSpeed = profile.ballSpeed;
+  ballSpawnInterval = profile.ballSpawnInterval;
+  swingThreshold = profile.swingThreshold;
+  swingCooldownMs = profile.swingCooldownMs;
+  hitWindowX = profile.hitWindowX;
+  hitWindowY = profile.hitWindowY;
+  timingScale = profile.timingScale;
+
+  gravityStrength = profile.gravity;
+  jumpStrength = profile.jump;
+  gravitySlider.value = String(profile.gravity);
+  jumpSlider.value = String(profile.jump);
+  gravityValue.textContent = String(profile.gravity);
+  jumpValue.textContent = String(profile.jump);
+}
 
 function setFlapStatus(text, className) {
   flapStatus.textContent = text;
@@ -124,12 +211,12 @@ function resetActiveGame() {
 
 function spawnPipe() {
   const padding = 80;
-  const gapY = padding + Math.random() * (gameCanvas.height - padding * 2 - PIPE_GAP);
+  const gapY = padding + Math.random() * (gameCanvas.height - padding * 2 - pipeGap);
   flappyState.pipes.push({
     x: gameCanvas.width + 30,
-    width: PIPE_WIDTH,
+    width: pipeWidth,
     gapY,
-    gapHeight: PIPE_GAP,
+    gapHeight: pipeGap,
     scored: false,
   });
 }
@@ -139,8 +226,8 @@ function spawnCricketBall() {
   cricketState.ball = {
     x: -20,
     y,
-    vx: BALL_SPEED,
-    vy: (Math.random() - 0.5) * 40,
+    vx: ballSpeed + (Math.random() - 0.5) * 12,
+    vy: (Math.random() - 0.5) * 26,
     active: true,
   };
 }
@@ -177,7 +264,7 @@ function isFoldedArms(landmarks, shoulderWidth) {
 }
 
 function evaluateCricketHitTiming(ballX) {
-  const timingError = Math.abs(ballX - BATTER_X) / 70;
+  const timingError = Math.abs(ballX - BATTER_X) / timingScale;
   if (timingError < 0.1) return 6;
   if (timingError < 0.2) return 4;
   if (timingError < 0.33) return 3;
@@ -209,12 +296,13 @@ function handlePoseGestures(landmarks, nowMs) {
   const rightElbow = landmarks[14];
   const leftShoulder = landmarks[11];
   const rightShoulder = landmarks[12];
+  const visibilityThreshold = isMobileDevice ? 0.42 : 0.5;
 
   const confident =
-    leftWrist.visibility > 0.55 &&
-    rightWrist.visibility > 0.55 &&
-    leftElbow.visibility > 0.55 &&
-    rightElbow.visibility > 0.55 &&
+    leftWrist.visibility > visibilityThreshold &&
+    rightWrist.visibility > visibilityThreshold &&
+    leftElbow.visibility > visibilityThreshold &&
+    rightElbow.visibility > visibilityThreshold &&
     leftShoulder.visibility > 0.45 &&
     rightShoulder.visibility > 0.45;
 
@@ -259,38 +347,41 @@ function handlePoseGestures(landmarks, nowMs) {
     const leftUpSpeed = (poseState.previousLeftY - leftWrist.y) / dt;
     const rightUpSpeed = (poseState.previousRightY - rightWrist.y) / dt;
     const meanUpSpeed = (leftUpSpeed + rightUpSpeed) / 2;
-    const elbowsBelowWrists = leftWrist.y < leftElbow.y + 0.07 && rightWrist.y < rightElbow.y + 0.07;
-    const cooldownReady = nowMs - poseState.lastFlapAt > 280;
-    const isFlap = meanUpSpeed > 0.95 && elbowsBelowWrists && cooldownReady;
+    const elbowsBelowWrists = leftWrist.y < leftElbow.y + 0.11 && rightWrist.y < rightElbow.y + 0.11;
+    const cooldownReady = nowMs - poseState.lastFlapAt > flapCooldownMs;
+    const bothHandsUp = leftUpSpeed > flapThreshold * 0.75 && rightUpSpeed > flapThreshold * 0.75;
+    const oneHandPowerFlap = leftUpSpeed > flapThreshold * 1.25 || rightUpSpeed > flapThreshold * 1.25;
+    const isFlap =
+      cooldownReady && elbowsBelowWrists && (meanUpSpeed > flapThreshold || bothHandsUp || oneHandPowerFlap);
 
     if (isFlap) {
       poseState.lastFlapAt = nowMs;
       triggerFlappyJump();
       setFlapStatus("Flap detected!", "good");
       flapHint.textContent = "Nice. Keep flapping upward. Fold arms to reset.";
-    } else if (meanUpSpeed > 0.45) {
+    } else if (meanUpSpeed > flapThreshold * 0.6) {
       setFlapStatus("Almost there", "neutral");
-      flapHint.textContent = "Flap both hands up faster at the same time.";
+      flapHint.textContent = "Good start. Raise both hands up a little faster.";
     } else {
       setFlapStatus("Ready", "neutral");
       flapHint.textContent = "Quick upward flaps jump. Fold arms to reset.";
     }
   } else {
     const rightXSpeed = Math.abs((rightWrist.x - poseState.previousRightX) / dt);
-    const rightHeightOk = rightWrist.y < rightShoulder.y + 0.42;
-    const swingReady = nowMs - poseState.lastSwingAt > 380;
-    const isSwing = rightXSpeed > 1.2 && rightHeightOk && swingReady;
+    const rightHeightOk = rightWrist.y < rightShoulder.y + 0.5;
+    const swingReady = nowMs - poseState.lastSwingAt > swingCooldownMs;
+    const isSwing = rightXSpeed > swingThreshold && rightHeightOk && swingReady;
 
     if (isSwing) {
       poseState.lastSwingAt = nowMs;
-      triggerBatSwing((rightXSpeed - 1.1) / 1.7);
+      triggerBatSwing((rightXSpeed - swingThreshold + 0.2) / 1.4);
 
       if (
         cricketState.mode === "running" &&
         cricketState.ball &&
         cricketState.ball.active &&
-        Math.abs(cricketState.ball.x - BATTER_X) < 70 &&
-        Math.abs(cricketState.ball.y - BATTER_Y) < 95
+        Math.abs(cricketState.ball.x - BATTER_X) < hitWindowX &&
+        Math.abs(cricketState.ball.y - BATTER_Y) < hitWindowY
       ) {
         const runs = evaluateCricketHitTiming(cricketState.ball.x);
         cricketState.runs += runs;
@@ -496,13 +587,13 @@ function updateFlappy(dt) {
   flappyState.birdY += flappyState.birdVelocity * dt;
 
   flappyState.pipeSpawnTimer += dt;
-  if (flappyState.pipeSpawnTimer >= PIPE_SPAWN_INTERVAL) {
+  if (flappyState.pipeSpawnTimer >= pipeSpawnInterval) {
     flappyState.pipeSpawnTimer = 0;
     spawnPipe();
   }
 
   flappyState.pipes.forEach((pipe) => {
-    pipe.x -= PIPE_SPEED * dt;
+    pipe.x -= pipeSpeed * dt;
     if (!pipe.scored && pipe.x + pipe.width < BIRD_X) {
       pipe.scored = true;
       flappyState.score += 1;
@@ -519,10 +610,11 @@ function updateFlappy(dt) {
     return;
   }
 
+  const birdHitbox = isMobileDevice ? 10 : 12;
   for (const pipe of flappyState.pipes) {
-    const inX = BIRD_X + 14 > pipe.x && BIRD_X - 14 < pipe.x + pipe.width;
-    const inTopPipe = flappyState.birdY - 14 < pipe.gapY;
-    const inBottomPipe = flappyState.birdY + 14 > pipe.gapY + pipe.gapHeight;
+    const inX = BIRD_X + birdHitbox > pipe.x && BIRD_X - birdHitbox < pipe.x + pipe.width;
+    const inTopPipe = flappyState.birdY - birdHitbox < pipe.gapY;
+    const inBottomPipe = flappyState.birdY + birdHitbox > pipe.gapY + pipe.gapHeight;
     if (inX && (inTopPipe || inBottomPipe)) {
       flappyState.mode = "gameover";
       return;
@@ -544,7 +636,7 @@ function updateCricket(dt) {
   }
 
   cricketState.spawnTimer += dt;
-  if (!cricketState.ball && cricketState.spawnTimer >= BALL_SPAWN_INTERVAL) {
+  if (!cricketState.ball && cricketState.spawnTimer >= ballSpawnInterval) {
     cricketState.spawnTimer = 0;
     spawnCricketBall();
   }
@@ -584,10 +676,14 @@ function setActiveGame(nextGame) {
 
   if (flappy) {
     setFlapStatus("Ready", "neutral");
-    flapHint.textContent = "Flappy mode: flap hands to jump. Fold arms to reset.";
+    flapHint.textContent = isMobileDevice
+      ? "Mobile Flappy: quick up-flaps jump. Fold arms to reset."
+      : "Flappy mode: flap hands to jump. Fold arms to reset.";
   } else {
     setFlapStatus("Ready", "neutral");
-    flapHint.textContent = "Cricket mode: 12 balls, score 1/2/3/4/6 by timing your swing.";
+    flapHint.textContent = isMobileDevice
+      ? "Mobile Cricket: swing right hand, 12 balls, score 1/2/3/4/6."
+      : "Cricket mode: 12 balls, score 1/2/3/4/6 by timing your swing.";
   }
 }
 
@@ -665,8 +761,8 @@ async function startCamera() {
     onFrame: async () => {
       await pose.send({ image: videoElement });
     },
-    width: 960,
-    height: 720,
+    width: isMobileDevice ? 720 : 960,
+    height: isMobileDevice ? 960 : 720,
   });
 
   try {
@@ -710,8 +806,22 @@ jumpSlider.addEventListener("input", () => {
   jumpValue.textContent = String(jumpStrength);
 });
 
-gravityValue.textContent = String(gravityStrength);
-jumpValue.textContent = String(jumpStrength);
+let resizeTimer;
+window.addEventListener("resize", () => {
+  window.clearTimeout(resizeTimer);
+  resizeTimer = window.setTimeout(() => {
+    const nextMode = detectMobileDevice();
+    if (nextMode === isMobileDevice) return;
+    isMobileDevice = nextMode;
+    applyDeviceLayout();
+    applyDifficultyProfile();
+    resetActiveGame();
+    setActiveGame(activeGame);
+  }, 180);
+});
+
+applyDeviceLayout();
+applyDifficultyProfile();
 bestScoreText.textContent = `Best: ${flappyState.best}`;
 resetCricketGame();
 setActiveGame("flappy");
