@@ -13,7 +13,7 @@ Open [http://localhost:8000](http://localhost:8000), click **Start Camera**, the
 
 ## How controls work
 
-- Flappy: both hands upward flap makes the bird jump.
+- Flappy: both hands downward flap makes the bird jump.
 - Cricket: swing your right hand to hit the ball; timing decides 1 to 6 runs.
 - Fold your arms across your chest to reset the active game.
 - If hand tracking is weak, keep your full upper body and both hands visible.
@@ -35,15 +35,27 @@ To see visitors/page views:
 
 This app now includes a global leaderboard API at `api/leaderboard.js`.
 
-It uses Vercel KV (Upstash Redis via REST) and expects these environment variables:
+It uses Supabase (PostgREST) and expects these environment variables:
 
-- `KV_REST_API_URL`
-- `KV_REST_API_TOKEN`
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY` (recommended on server) or `SUPABASE_ANON_KEY`
 
 Setup steps:
 
-1. In Vercel, open your project and add a **KV** store.
-2. Connect the KV store to this project so Vercel injects the env vars above.
+1. Ensure your Supabase integration injects the env vars above into this Vercel project.
+2. Create this table in Supabase SQL editor:
+
+```sql
+create table if not exists public.leaderboard_scores (
+  id bigserial primary key,
+  game text not null check (game in ('flappy', 'cricket')),
+  name text not null check (char_length(name) between 1 and 18),
+  score integer not null check (score >= 0),
+  updated_at timestamptz not null default now(),
+  unique (game, name)
+);
+```
+
 3. Redeploy the project.
 
 After that, score submissions and leaderboard reads are live globally for:
