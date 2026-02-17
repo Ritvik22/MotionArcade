@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flap Pose • A Ritvik Shah Production</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="camera-panel">
+        <div class="panel-header">
+          <h1>Flap Pose</h1>
+          <p>Choose Flappy Bird or Cricket on the right and control with body motion.</p>
+          <p class="signature">A Ritvik Shah Production</p>
+        </div>
+
+        <div class="camera-wrap">
+          <video id="video" class="input-video" playsinline></video>
+          <canvas id="output" class="output-canvas"></canvas>
+          <button id="startBtn" class="camera-start-btn" type="button">Start Camera to Play</button>
+        </div>
+
+        <div class="panel-actions">
+          <p id="cameraState">Camera is off.</p>
+          <p class="micro-tag">Made by Ritvik Shah</p>
+        </div>
+      </section>
+
+      <aside class="metrics-panel">
+        <div class="status-card">
+          <h2>Flap Detector</h2>
+          <p id="flapStatus" class="status neutral">Waiting for camera</p>
+          <p id="flapHint" class="score-value">Raise both hands and flap up quickly. Fold your arms to reset.</p>
+          <p class="micro-tag">A Ritvik Shah Production</p>
+        </div>
+
+        <div class="status-card game-card">
+          <div class="game-tabs">
+            <button id="tabFlappy" class="tab-btn active" type="button">Flappy Bird</button>
+            <button id="tabCricket" class="tab-btn" type="button">Cricket</button>
+          </div>
+
+          <div id="flappyHud" class="game-topbar">
+            <p id="gameScore">Score: 0</p>
+            <p id="bestScore">Best: 0</p>
+          </div>
+
+          <div id="cricketHud" class="game-topbar hidden">
+            <p id="cricketRuns">Runs: 0</p>
+            <p id="cricketBalls">Balls: 0</p>
+            <p id="cricketLastShot">Last hit: -</p>
+          </div>
+
+          <div class="game-topbar">
+            <p>Motion-Controlled Arcade</p>
+          </div>
+          <canvas id="gameCanvas" width="420" height="600"></canvas>
+          <p id="cricketHint" class="score-value hidden">
+            12 balls per innings. Swing your right hand as the ball reaches the batter to score 1, 2, 3, 4, or 6.
+          </p>
+          <button id="resetGameBtn">Reset Game</button>
+          <div id="flappyControls">
+            <div class="control-group">
+              <label for="gravitySlider">Gravity: <span id="gravityValue">1700</span></label>
+              <input id="gravitySlider" type="range" min="900" max="3000" step="50" value="1700" />
+            </div>
+            <div class="control-group">
+              <label for="jumpSlider">Jump Strength: <span id="jumpValue">460</span></label>
+              <input id="jumpSlider" type="range" min="260" max="760" step="10" value="460" />
+            </div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

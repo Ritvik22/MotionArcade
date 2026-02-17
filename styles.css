@@ -1,0 +1,264 @@
+:root {
+  --bg: #f3f7ee;
+  --panel: #ffffff;
+  --ink: #11261f;
+  --muted: #436156;
+  --accent: #0d8f74;
+  --warn: #e4572e;
+  --good: #177a4f;
+  --border: #cfe2d8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 10% 20%, #d7f0d8 0%, transparent 40%),
+    radial-gradient(circle at 85% 80%, #ffe4be 0%, transparent 35%),
+    var(--bg);
+}
+
+.layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.3fr 0.8fr;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.camera-panel,
+.metrics-panel {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.camera-panel {
+  padding: 1rem;
+}
+
+.panel-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  letter-spacing: -0.04em;
+}
+
+.panel-header p {
+  margin: 0.5rem 0 1rem;
+  color: var(--muted);
+}
+
+.signature {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.camera-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #0a1714;
+}
+
+.input-video,
+.output-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.input-video {
+  transform: scaleX(-1);
+}
+
+.camera-start-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  font-size: 0.95rem;
+  padding: 0.85rem 1.2rem;
+  border-radius: 12px;
+  border: 1px solid #ffffff;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+  background: linear-gradient(135deg, #0fa17f, #13795f);
+}
+
+.camera-start-btn.hidden {
+  display: none;
+}
+
+.panel-actions {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+button {
+  border: none;
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  background: linear-gradient(135deg, #0fa17f, #13795f);
+  color: #fff;
+}
+
+#cameraState {
+  margin: 0;
+  color: var(--muted);
+}
+
+.micro-tag {
+  margin: 0;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  opacity: 0.72;
+  color: #4e655b;
+}
+
+.metrics-panel {
+  padding: 1rem;
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.status-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.9rem;
+}
+
+.status-card h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.status {
+  margin: 0 0 0.7rem;
+  font-weight: 700;
+}
+
+.status.neutral {
+  color: var(--muted);
+}
+
+.status.good {
+  color: var(--good);
+}
+
+.status.bad {
+  color: var(--warn);
+}
+
+.score-value {
+  margin: 0.25rem 0 0;
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--muted);
+}
+
+.game-card {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.game-tabs {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.tab-btn {
+  flex: 1;
+  background: #e5efe9;
+  color: #2b4b40;
+  border: 1px solid #bfd6c9;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+}
+
+.tab-btn.active {
+  background: linear-gradient(135deg, #2576bc, #1f5b94);
+  border-color: #1f5b94;
+  color: #ffffff;
+}
+
+.game-topbar {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.8rem;
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+
+.game-topbar p {
+  margin: 0;
+}
+
+#gameCanvas {
+  width: 100%;
+  max-height: 62vh;
+  aspect-ratio: 7 / 10;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: linear-gradient(#b7ecf7, #ccefd7);
+}
+
+#resetGameBtn {
+  justify-self: start;
+  background: linear-gradient(135deg, #2576bc, #1f5b94);
+}
+
+#flappyControls {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.control-group {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.control-group label {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.control-group input[type="range"] {
+  width: 100%;
+  accent-color: #1f5b94;
+}
+
+.hidden {
+  display: none;
+}
+
+@media (max-width: 980px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
